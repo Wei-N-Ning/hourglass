@@ -31,6 +31,10 @@ class ServantImplGetter(object):
         return [ServantImpl.attach(tag, pid) for tag, pid in self._pidByTag.iteritems()]
 
 
+def kill_all():
+    ServantImplGetter().terminate()
+
+
 class ServantImpl(object):
 
     def __init__(self):
