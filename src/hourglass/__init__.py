@@ -20,7 +20,7 @@ DELIMITER_PATTERN = '_p(\d+)p_'
 class ServantImplGetter(object):
 
     def __init__(self):
-        procs = ProcessUtils.find_pids_by_regex(TAG_TEMPLATE.format('\w+'))
+        procs = ProcessUtils.find_pids_by_regex(TAG_TEMPLATE.format('[a-zA-Z0-9\._]{1,}'))
         self._pidByTag = dict((tag, min(pids)) for tag, pids in procs.iteritems())
 
     def terminate(self):
