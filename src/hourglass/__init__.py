@@ -3,6 +3,7 @@ import contextlib
 import json
 import os
 import re
+import shlex
 import signal
 import socket
 import subprocess
@@ -74,7 +75,8 @@ class ServantImpl(object):
         env = os.environ.copy()
         env[tag.split('=')[0]] = tag.split('=')[-1]
         cmd_line = '/usr/bin/env python -m hourglass {} {}'.format(name, port)
-        subprocess.Popen(cmd_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        cmd_list = shlex.split(cmd_line)
+        subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
         pid = -1
         while pid == -1:
             time.sleep(0.05)
@@ -404,10 +406,12 @@ class ProcessUtils(object):
 
     @staticmethod
     def find_defunct_processes():
-        p = subprocess.Popen('ps aux | grep "<defunct>"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(['ps', 'aux'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         p.wait()
         pids = set()
         for l in p.stdout.readlines():
+            if '<defunct>' not in l:
+                continue
             r = re.search('\d+', l)
             if r:
                 pids.add(int(r.group()))
