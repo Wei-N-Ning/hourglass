@@ -19,7 +19,8 @@ DELIMITER_PATTERN = '_p(\d+)p_'
 class ServantImplGetter(object):
 
     def __init__(self):
-        self._pidByTag = ProcessUtils.find_pids_by_regex(TAG_TEMPLATE.format('\w+'))
+        procs = ProcessUtils.find_pids_by_regex(TAG_TEMPLATE.format('\w+'))
+        self._pidByTag = dict((tag, min(pids)) for tag, pids in procs.iteritems())
 
     def terminate(self):
         for _, pid in self._pidByTag.iteritems():
@@ -42,6 +43,9 @@ class ServantImpl(object):
     def __ne__(self, other):
         return self.__dict__ != other.__dict__
 
+    def to_str(self):
+        return 'impl<name:{name}, pid:{pid}, port:{port}>'.format(**self.__dict__)
+
     @classmethod
     def attach(cls, tag, pid):
         ins = cls()
@@ -57,7 +61,7 @@ class ServantImpl(object):
         result = re.search(DELIMITER_PATTERN, _)
         assert result
         port_str = result.groups()[0]
-        return _.replace(port_str, ''), int(port_str)
+        return _.replace(result.group(), ''), int(port_str)
 
     @classmethod
     def create(cls, name):
@@ -70,8 +74,12 @@ class ServantImpl(object):
         env = os.environ.copy()
         env[tag.split('=')[0]] = tag.split('=')[-1]
         cmd_line = '/usr/bin/env python -m hourglass {} {}'.format(name, port)
-        p = subprocess.Popen(cmd_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        ins.pid = p.pid
+        subprocess.Popen(cmd_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        pid = -1
+        while pid == -1:
+            time.sleep(0.05)
+            pid = ProcessUtils.find_pid_by_tag(tag)
+        ins.pid = pid
         return ins
 
     def terminate(self):
@@ -83,32 +91,6 @@ class ServantImpl(object):
         if self.pid is None:
             return False
         return ProcessUtils.process_exists(self.pid)
-
-
-class ServantPool(object):
-
-    _pool = dict()
-
-    @classmethod
-    def add(cls, s):
-        """
-
-        Args:
-            s (Servant):
-        """
-        cls._pool[s.name] = s
-
-    @classmethod
-    def get(cls, name):
-        """
-
-        Args:
-            name (str):
-
-        Returns:
-            Servant
-        """
-        return cls._pool.get(name)
 
 
 class ArgStruct(object):
@@ -232,14 +214,15 @@ class Servant(object):
             Servant:
         """
         cls._assert_service_name(name)
-        s = ServantPool.get(name)
-        if s and s.is_alive():
-            return s
         ins = cls()
         ins.name = name
+        list_impl = ServantImplGetter().get_servant_impls()
+        for i in list_impl:
+            if name == i.name:
+                ins.impl = i
+                return ins
         ins.impl = ServantImpl.create(name)
         ins.wait_for()
-        ServantPool.add(ins)
         return ins
 
     def __str__(self):
@@ -413,7 +396,10 @@ class ProcessUtils(object):
                 continue
             result = cls._search_env(env_file_path, pattern)
             if result:
-                procs[result.group()] = pid
+                k = result.group()
+                a_list = procs.get(k, list())
+                a_list.append(pid)
+                procs[k] = a_list
         return procs
 
     @staticmethod

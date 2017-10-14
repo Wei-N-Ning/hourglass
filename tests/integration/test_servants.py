@@ -41,8 +41,6 @@ class TestServant(unittest.TestCase):
         s = hourglass.Servant.create('DemoService')
         result = s.service_health()
         self.assertTrue(result['is_running'])
-        result = s.call_service('foo')
-        self.assertTrue(result)
 
     def test_create_expect_process_reused(self):
         s1 = hourglass.Servant.create('DemoService')
