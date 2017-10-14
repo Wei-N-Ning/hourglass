@@ -76,12 +76,11 @@ class ServantImpl(object):
         env[tag.split('=')[0]] = tag.split('=')[-1]
         cmd_line = '/usr/bin/env python -m hourglass {} {}'.format(name, port)
         cmd_list = shlex.split(cmd_line)
-        subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        pid = -1
-        while pid == -1:
-            time.sleep(0.05)
-            pid = ProcessUtils.find_pid_by_tag(tag)
-        ins.pid = pid
+        f_stdout = open('/tmp/{}.stdout.txt'.format(tag), 'w')
+        f_stderr = open('/tmp/{}.stderr.txt'.format(tag), 'w')
+        p = subprocess.Popen(cmd_list, env=env,
+                             stdout=f_stdout, stderr=f_stderr, )
+        ins.pid = p.pid
         return ins
 
     def terminate(self):
