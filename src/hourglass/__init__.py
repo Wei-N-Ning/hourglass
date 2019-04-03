@@ -190,7 +190,7 @@ class ServiceGetter(object):
     def import_module(cls, path):
         try:
             return __import__(path, fromlist=[''])
-        except ImportError, e:
+        except ImportError as e:
             return None
 
     @classmethod
@@ -238,7 +238,7 @@ class Servant(object):
             try:
                 self.service_health()
                 return True
-            except Exception, e:
+            except Exception as e:
                 time.sleep(sleep)
             time_out -= sleep
         if to_raise:
